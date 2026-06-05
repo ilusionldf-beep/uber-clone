@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <!-- Fondo -->
+  <rect width="1200" height="630" fill="#020818"/>
+  <!-- Glow izquierda -->
+  <radialGradient id="g1" cx="20%" cy="30%" r="50%">
+    <stop offset="0%" stop-color="#0050c8" stop-opacity="0.4"/>
+    <stop offset="100%" stop-color="#020818" stop-opacity="0"/>
+  </radialGradient>
+  <rect width="1200" height="630" fill="url(#g1)"/>
+  <!-- Glow derecha -->
+  <radialGradient id="g2" cx="80%" cy="70%" r="50%">
+    <stop offset="0%" stop-color="#7800c8" stop-opacity="0.3"/>
+    <stop offset="100%" stop-color="#020818" stop-opacity="0"/>
+  </radialGradient>
+  <rect width="1200" height="630" fill="url(#g2)"/>
+  <!-- Grid -->
+  <defs>
+    <pattern id="grid" width="60" height="60" patternUnits="userSpaceOnUse">
+      <path d="M 60 0 L 0 0 0 60" fill="none" stroke="#00c8ff" stroke-width="0.3" opacity="0.15"/>
+    </pattern>
+  </defs>
+  <rect width="1200" height="630" fill="url(#grid)"/>
+  <!-- Ícono taxi -->
+  <text x="140" y="360" font-size="200" text-anchor="middle" font-family="serif">🚖</text>
+  <!-- Línea decorativa -->
+  <line x1="280" y1="200" x2="280" y2="430" stroke="#facc15" stroke-width="3" opacity="0.6"/>
+  <!-- Título principal -->
+  <text x="340" y="280" font-size="72" font-weight="bold" fill="#facc15" font-family="Arial, sans-serif">TAXI</text>
+  <text x="340" y="360" font-size="72" font-weight="bold" fill="white" font-family="Arial, sans-serif">VIRGIN ISLANDS</text>
+  <!-- Subtítulo -->
+  <text x="340" y="415" font-size="32" fill="#9ca3af" font-family="Arial, sans-serif">Tu taxi en las Islas Vírgenes 🇻🇮</text>
+  <!-- Features -->
+  <text x="340" y="480" font-size="26" fill="#4ade80" font-family="Arial, sans-serif">✓ GPS en tiempo real</text>
+  <text x="580" y="480" font-size="26" fill="#60a5fa" font-family="Arial, sans-serif">✓ Chat con conductor</text>
+  <text x="820" y="480" font-size="26" fill="#facc15" font-family="Arial, sans-serif">✓ Gratis</text>
+  <!-- URL -->
+  <text x="600" y="570" font-size="28" fill="#6b7280" text-anchor="middle" font-family="Arial, sans-serif">taxivirginislands.netlify.app</text>
+</svg>
