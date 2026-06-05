@@ -1,7 +1,7 @@
 export const translations = {
   es: {
     // App general
-    appName: 'Uber Clone',
+    appName: 'Taxi Virgin Islands',
     appTagline: 'Plataforma de transporte',
 
     // Login
@@ -14,7 +14,7 @@ export const translations = {
 
     // Register
     registerTitle: 'Crear cuenta',
-    registerSub: 'Únete a Uber Clone',
+    registerSub: 'Únete a Taxi Virgin Islands',
     registerName: 'Nombre completo',
     registerEmail: 'Correo',
     registerPassword: 'Contraseña',
@@ -69,7 +69,7 @@ export const translations = {
 
     // Admin
     adminTitle: 'Admin Panel',
-    adminSub: 'Uber Clone — Dashboard',
+    adminSub: 'Taxi Virgin Islands — Admin',
     refresh: '🔄 Refrescar',
     tabOverview: '📊 Overview',
     tabUsers: '👥 Usuarios',
@@ -125,7 +125,7 @@ export const translations = {
   },
 
   en: {
-    appName: 'Uber Clone',
+    appName: 'Taxi Virgin Islands',
     appTagline: 'Transportation platform',
 
     loginEmail: 'Email',
@@ -136,7 +136,7 @@ export const translations = {
     loginRegister: 'Sign up',
 
     registerTitle: 'Create account',
-    registerSub: 'Join Uber Clone',
+    registerSub: 'Join Taxi Virgin Islands',
     registerName: 'Full name',
     registerEmail: 'Email',
     registerPassword: 'Password',
@@ -188,7 +188,7 @@ export const translations = {
     incompleteProfileSub: 'You need to add your vehicle in Supabase',
 
     adminTitle: 'Admin Panel',
-    adminSub: 'Uber Clone — Dashboard',
+    adminSub: 'Taxi Virgin Islands — Admin',
     refresh: '🔄 Refresh',
     tabOverview: '📊 Overview',
     tabUsers: '👥 Users',
@@ -241,7 +241,7 @@ export const translations = {
   },
 
   fr: {
-    appName: 'Uber Clone',
+    appName: 'Taxi Virgin Islands',
     appTagline: 'Plateforme de transport',
 
     loginEmail: 'Email',
@@ -252,7 +252,7 @@ export const translations = {
     loginRegister: "S'inscrire",
 
     registerTitle: 'Créer un compte',
-    registerSub: 'Rejoignez Uber Clone',
+    registerSub: 'Rejoignez Taxi Virgin Islands',
     registerName: 'Nom complet',
     registerEmail: 'Email',
     registerPassword: 'Mot de passe',
@@ -304,7 +304,7 @@ export const translations = {
     incompleteProfileSub: 'Vous devez ajouter votre véhicule dans Supabase',
 
     adminTitle: 'Panneau Admin',
-    adminSub: 'Uber Clone — Tableau de bord',
+    adminSub: 'Taxi Virgin Islands — Tableau de bord',
     refresh: '🔄 Actualiser',
     tabOverview: '📊 Vue globale',
     tabUsers: '👥 Utilisateurs',

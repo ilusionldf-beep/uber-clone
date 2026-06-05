@@ -22,7 +22,7 @@ export default function Login() {
         <div className="text-center mb-10">
           <div className="text-6xl mb-4">🚖</div>
           <div className="text-4xl font-black text-white tracking-tight">
-            <span className="text-yellow-400">UBER</span> CLONE
+            <span className="text-yellow-400">TAXI</span> VIRGIN ISLANDS
           </div>
           <p className="text-gray-500 text-sm mt-2">Plataforma de transporte</p>
         </div>

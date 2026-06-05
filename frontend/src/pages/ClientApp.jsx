@@ -307,7 +307,7 @@ export default function ClientApp() {
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 bg-zinc-900 border-b border-zinc-800 flex-shrink-0">
         <div>
-          <div className="font-black text-yellow-400 text-lg">🚖 Uber Clone</div>
+          <div className="font-black text-yellow-400 text-lg">🚖 Taxi Virgin Islands</div>
           <div className="text-xs text-gray-500">{user?.full_name || t('clientTitle')}</div>
         </div>
         <div className="flex items-center gap-2">

@@ -1,7 +1,7 @@
 export default function ShareButton() {
   function shareWhatsApp() {
     const url   = 'https://taxivirginislands.netlify.app'
-    const texto = `🚖 ¡Únete a *Taxi Virgin Islands*!\n\nSolicita tu taxi en las Islas Vírgenes de forma fácil y rápida.\n\n👉 ${url}`
+    const texto = `🚖 ¡Descarga *Taxi Virgin Islands*!\n\nSolicita tu taxi en las Islas Vírgenes de forma fácil y rápida. Sin llamadas, sin esperas.\n\n👉 ${url}`
     window.open(`https://wa.me/?text=${encodeURIComponent(texto)}`, '_blank')
   }
 
