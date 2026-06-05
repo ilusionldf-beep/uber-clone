@@ -46,16 +46,51 @@ export default function ClientApp() {
         .then(async ({ data }) => {
           if (!data) return
           setUser(data)
-          // Activar push notifications
-          const ok = await registerPush(data.id)
-          setPushEnabled(ok)
+          registerPush(data.id)
+
           // Cargar viaje activo si existe
           const { data: trip } = await supabase.from('trips')
             .select('*').eq('client_id', data.id)
-            .in('status', ['accepted', 'in_progress'])
-            .order('accepted_at', { ascending: false })
+            .in('status', ['accepted','in_progress','requested'])
+            .order('requested_at', { ascending: false })
             .limit(1).single()
-          if (trip) setActiveTrip(trip)
+          if (trip) {
+            setActiveTrip(trip)
+            if (trip.status === 'accepted' || trip.status === 'in_progress') {
+              drawRoute(trip.origin_lat, trip.origin_lng, trip.dest_lat, trip.dest_lng, null, null)
+            }
+          }
+
+          // Suscripción a viajes del cliente con filtro por client_id
+          supabase.channel(`client-trips-${data.id}`)
+            .on('postgres_changes', {
+              event: 'UPDATE', schema: 'public', table: 'trips',
+              filter: `client_id=eq.${data.id}`
+            }, payload => {
+              const t = payload.new
+              if (t.status === 'accepted') {
+                setActiveTrip(t)
+                showToast('🚖 ¡Conductor en camino!')
+                drawRoute(t.origin_lat, t.origin_lng, t.dest_lat, t.dest_lng, null, null)
+              } else if (t.status === 'completed') {
+                setCompleted(t)
+                setActiveTrip(null)
+                showToast('✅ Viaje completado — ¡gracias!')
+                if (t.driver_id) {
+                  supabase.from('drivers').select('user_id').eq('id', t.driver_id).single()
+                    .then(({ data: dData }) => {
+                      if (dData) {
+                        setDriverUser(dData.user_id)
+                        setTimeout(() => setShowRating(true), 800)
+                      }
+                    })
+                }
+              } else if (t.status === 'cancelled') {
+                setActiveTrip(null)
+                showToast('❌ Viaje cancelado por el conductor')
+              }
+            })
+            .subscribe()
         })
     })
     loadDrivers()
@@ -74,43 +109,8 @@ export default function ClientApp() {
         })
       .subscribe()
 
-    // Suscripción realtime: mi viaje aceptado
-    const ch2 = supabase.channel('my-trip-updates')
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'trips' },
-        payload => {
-          const t = payload.new
-          if (t.status === 'accepted') {
-            setActiveTrip(t)
-            showToast('🚖 ¡Conductor en camino!')
-            // Dibujar ruta en el mapa
-            drawRoute(t.origin_lat, t.origin_lng, t.dest_lat, t.dest_lng, null, null)
-          } else if (t.status === 'completed') {
-            setCompleted(t)
-            setActiveTrip(null)
-            showToast('✅ Viaje completado — ¡gracias!')
-            // Obtener user_id del conductor ANTES de mostrar el modal
-            if (t.driver_id) {
-              supabase.from('drivers').select('user_id').eq('id', t.driver_id).single()
-                .then(({ data }) => {
-                  if (data) {
-                    setDriverUser(data.user_id)
-                    // Mostrar modal DESPUÉS de tener el driverUserId
-                    setTimeout(() => setShowRating(true), 800)
-                  }
-                })
-            } else {
-              setTimeout(() => setShowRating(true), 800)
-            }
-          } else if (t.status === 'cancelled') {
-            setActiveTrip(null)
-            showToast('❌ Viaje cancelado')
-          }
-        })
-      .subscribe()
-
     return () => {
       supabase.removeChannel(ch1)
-      supabase.removeChannel(ch2)
     }
   }, [])
 
