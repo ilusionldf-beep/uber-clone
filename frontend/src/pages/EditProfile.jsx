@@ -5,8 +5,10 @@ import { useLang } from '../lib/LangContext'
 import LangSwitcher from '../components/LangSwitcher'
 
 export default function EditProfile() {
-  const [user, setUser]     = useState(null)
-  const [driver, setDriver] = useState(null)
+  const [user, setUser]         = useState(null)
+  const [driver, setDriver]     = useState(null)
+  const [avatar, setAvatar]     = useState(null)   // URL actual
+  const [uploading, setUploading] = useState(false)
   const [form, setForm]     = useState({
     full_name: '', phone: '',
     license_plate: '', vehicle_model: '', vehicle_color: '', vehicle_year: ''
@@ -59,6 +61,7 @@ export default function EditProfile() {
       .from('users').select('*').eq('auth_id', authUser.id).single()
     if (!profile) { navigate('/'); return }
     setUser(profile)
+    setAvatar(profile.avatar_url || null)
 
     if (profile.role === 'taxista') {
       const { data: driverData } = await supabase
@@ -79,6 +82,48 @@ export default function EditProfile() {
   }
 
   const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
+
+  async function uploadAvatar(e) {
+    const file = e.target.files?.[0]
+    if (!file || !user) return
+
+    // Validar tamaño (máx 3MB)
+    if (file.size > 3 * 1024 * 1024) {
+      setError('La imagen no puede superar 3MB'); return
+    }
+
+    setUploading(true)
+    setError('')
+
+    try {
+      const { data: { user: authUser } } = await supabase.auth.getUser()
+      const ext  = file.name.split('.').pop()
+      const path = `${authUser.id}/avatar.${ext}`
+
+      // Subir a Supabase Storage
+      const { error: upErr } = await supabase.storage
+        .from('avatars')
+        .upload(path, file, { upsert: true, contentType: file.type })
+      if (upErr) throw upErr
+
+      // Obtener URL pública
+      const { data: { publicUrl } } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(path)
+
+      // Guardar URL en el perfil
+      await supabase.from('users')
+        .update({ avatar_url: publicUrl }).eq('id', user.id)
+
+      setAvatar(publicUrl + '?t=' + Date.now())
+      setSaved(true)
+      setTimeout(() => setSaved(false), 2000)
+    } catch (e) {
+      setError('Error al subir la imagen: ' + e.message)
+    } finally {
+      setUploading(false)
+    }
+  }
 
   async function handleSave() {
     if (!form.full_name.trim()) { setError('El nombre es requerido'); return }
@@ -112,7 +157,6 @@ export default function EditProfile() {
     </div>
   )
 
-  const avatar = user.avatar_url || null
   const initials = form.full_name?.slice(0,2).toUpperCase() || '??'
 
   return (
@@ -132,14 +176,32 @@ export default function EditProfile() {
 
         {/* Avatar */}
         <div className="flex flex-col items-center py-4">
-          {avatar ? (
-            <img src={avatar} alt="avatar"
-              className="w-20 h-20 rounded-full border-2 border-yellow-400 mb-3" />
-          ) : (
-            <div className="w-20 h-20 rounded-full bg-yellow-400/10 border-2 border-yellow-400 flex items-center justify-center text-2xl font-bold text-yellow-400 mb-3">
-              {initials}
-            </div>
-          )}
+          <div className="relative mb-3">
+            {avatar ? (
+              <img src={avatar} alt="avatar"
+                className="w-24 h-24 rounded-full border-2 border-yellow-400 object-cover" />
+            ) : (
+              <div className="w-24 h-24 rounded-full bg-yellow-400/10 border-2 border-yellow-400 flex items-center justify-center text-3xl font-bold text-yellow-400">
+                {initials}
+              </div>
+            )}
+            {/* Botón cambiar foto */}
+            <label className="absolute bottom-0 right-0 w-8 h-8 bg-yellow-400 hover:bg-yellow-300 rounded-full flex items-center justify-center cursor-pointer shadow-lg transition active:scale-95">
+              {uploading ? (
+                <span className="text-black text-xs animate-spin">⏳</span>
+              ) : (
+                <span className="text-black text-sm font-bold">📷</span>
+              )}
+              <input
+                type="file"
+                accept="image/jpeg,image/png,image/webp"
+                className="hidden"
+                onChange={uploadAvatar}
+                disabled={uploading}
+              />
+            </label>
+          </div>
+          <p className="text-xs text-gray-500 mb-1">Toca 📷 para cambiar la foto</p>
           <div className="text-xs text-gray-500">{user.email}</div>
           <div className={`text-xs mt-1 px-3 py-1 rounded-full font-medium ${
             user.role === 'taxista' ? 'bg-yellow-400/10 text-yellow-400' : 'bg-blue-400/10 text-blue-400'
