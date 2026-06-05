@@ -88,12 +88,19 @@ export default function ClientApp() {
             setCompleted(t)
             setActiveTrip(null)
             showToast('✅ Viaje completado — ¡gracias!')
-            // Obtener user_id del conductor para la calificación
+            // Obtener user_id del conductor ANTES de mostrar el modal
             if (t.driver_id) {
               supabase.from('drivers').select('user_id').eq('id', t.driver_id).single()
-                .then(({ data }) => { if (data) setDriverUser(data.user_id) })
+                .then(({ data }) => {
+                  if (data) {
+                    setDriverUser(data.user_id)
+                    // Mostrar modal DESPUÉS de tener el driverUserId
+                    setTimeout(() => setShowRating(true), 800)
+                  }
+                })
+            } else {
+              setTimeout(() => setShowRating(true), 800)
             }
-            setTimeout(() => setShowRating(true), 1000)
           } else if (t.status === 'cancelled') {
             setActiveTrip(null)
             showToast('❌ Viaje cancelado')
