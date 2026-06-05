@@ -475,8 +475,8 @@ export default function DriverApp() {
                   <div key={d.id}
                     className={`flex items-center gap-3 p-3 rounded-xl border transition ${
                       isAvail ? 'bg-zinc-900 border-green-400/20' :
-                      isBusy  ? 'bg-zinc-900 border-orange-400/20 opacity-75' :
-                                'bg-zinc-900/50 border-zinc-800 opacity-50'
+                      isBusy  ? 'bg-zinc-900 border-orange-400/20' :
+                                'bg-zinc-900 border-zinc-800'
                     }`}>
 
                     {/* Avatar */}
@@ -514,10 +514,14 @@ export default function DriverApp() {
                       <div className="text-xs text-gray-600 mt-0.5 font-mono">{d.license_plate}</div>
                     </div>
 
-                    {/* Chat solo con disponibles */}
-                    {isAvail && user && d.users?.id !== user?.id && (
+                    {/* Chat con cualquier conductor (disponible u ocupado) */}
+                    {user && d.users?.id && d.users?.id !== user?.id && (
                       <button onClick={() => setChatDriver(d)}
-                        className="flex-shrink-0 bg-yellow-400 hover:bg-yellow-300 active:scale-95 text-black text-xs font-bold px-3 py-2 rounded-lg transition">
+                        className={`flex-shrink-0 text-xs font-bold px-3 py-2 rounded-lg transition active:scale-95 ${
+                          isAvail
+                            ? 'bg-yellow-400 hover:bg-yellow-300 text-black'
+                            : 'bg-zinc-700 hover:bg-zinc-600 text-gray-300'
+                        }`}>
                         💬 Chat
                       </button>
                     )}
