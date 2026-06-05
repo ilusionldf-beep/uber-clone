@@ -12,7 +12,7 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-screen bg-black flex items-center justify-center px-4">
+    <div className="min-h-screen flex items-center justify-center px-4 relative z-10">
       <div className="w-full max-w-sm">
 
         {/* Lang switcher */}

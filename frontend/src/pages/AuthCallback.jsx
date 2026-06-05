@@ -46,7 +46,7 @@ export default function AuthCallback() {
 
   // Cargando...
   return (
-    <div className="min-h-screen bg-black flex items-center justify-center">
+    <div className="min-h-screen flex items-center justify-center relative z-10">
       <div className="text-center space-y-4">
         <div className="text-5xl animate-spin">🚖</div>
         <div className="text-white font-semibold">Iniciando sesión...</div>

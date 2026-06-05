@@ -54,7 +54,7 @@ export default function Register() {
   }
 
   return (
-    <div className="min-h-screen bg-black flex items-center justify-center px-4 py-8">
+    <div className="min-h-screen flex items-center justify-center px-4 py-8 relative z-10">
       <div className="w-full max-w-sm">
         <div className="flex justify-end mb-4"><LangSwitcher /></div>
         <div className="text-center mb-8">

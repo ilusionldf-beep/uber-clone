@@ -107,7 +107,7 @@ export default function EditProfile() {
   }
 
   if (!user) return (
-    <div className="min-h-screen bg-black flex items-center justify-center">
+    <div className="min-h-screen flex items-center justify-center relative z-10">
       <div className="text-4xl animate-spin">🚖</div>
     </div>
   )
@@ -116,7 +116,7 @@ export default function EditProfile() {
   const initials = form.full_name?.slice(0,2).toUpperCase() || '??'
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-white flex flex-col max-w-md mx-auto">
+    <div className="min-h-screen text-white flex flex-col max-w-md mx-auto relative z-10">
 
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 bg-zinc-900 border-b border-zinc-800 flex-shrink-0">

@@ -102,7 +102,7 @@ export default function ChooseRole({ userId, userName, userEmail, userAvatar }) 
   }
 
   return (
-    <div className="min-h-screen bg-black flex items-center justify-center px-4 py-8">
+    <div className="min-h-screen flex items-center justify-center px-4 py-8 relative z-10">
       <div className="w-full max-w-sm">
 
         {/* Header */}

@@ -76,7 +76,7 @@ export default function AdminApp() {
   })[s] || 'bg-zinc-700 text-gray-400'
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-white flex flex-col max-w-lg mx-auto">
+    <div className="min-h-screen text-white flex flex-col max-w-lg mx-auto relative z-10">
 
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 bg-zinc-900 border-b border-red-400/20 flex-shrink-0">

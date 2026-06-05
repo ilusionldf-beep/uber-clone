@@ -312,7 +312,7 @@ export default function DriverApp() {
   }
 
   return (
-    <div className="min-h-screen bg-zinc-950 text-white flex flex-col max-w-md mx-auto relative">
+    <div className="min-h-screen text-white flex flex-col max-w-md mx-auto relative z-10">
 
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 bg-zinc-900 border-b border-yellow-400/20 flex-shrink-0">
