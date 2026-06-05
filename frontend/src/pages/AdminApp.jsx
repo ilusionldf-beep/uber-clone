@@ -15,8 +15,9 @@ export default function AdminApp() {
   const [confirm, setConfirm] = useState(null)   // { type, id, name }
   const [toast, setToast]     = useState('')
   const [mapReady, setMapReady] = useState(false)
-  const mapRef  = useRef(null)
-  const mapInst = useRef(null)
+  const mapRef     = useRef(null)
+  const mapInst    = useRef(null)
+  const markersMap = useRef({})   // { driver_id: L.marker }
   const navigate = useNavigate()
 
   useEffect(() => {
@@ -53,6 +54,32 @@ export default function AdminApp() {
     setLoading(false)
   }
 
+  function makeIcon(L, d, hasGPS) {
+    const color = d.status === 'available' && d.is_online ? '#4ade80'
+                : d.status === 'busy'                     ? '#fb923c'
+                : '#71717a'
+    return L.divIcon({
+      className: '',
+      html: `<div style="background:${color}22;border:2px solid ${color};border-radius:50%;width:36px;height:36px;display:flex;align-items:center;justify-content:center;font-size:18px;box-shadow:0 0 10px ${color}66;${!hasGPS?'opacity:0.6':''}position:relative">
+        🚖
+        ${d.is_online ? `<div style="position:absolute;top:-2px;right:-2px;width:10px;height:10px;border-radius:50%;background:#4ade80;border:2px solid #020818"></div>` : ''}
+      </div>`,
+      iconSize: [36,36], iconAnchor: [18,18]
+    })
+  }
+
+  function makePopup(d, lat, lng, hasGPS, color) {
+    const gps     = hasGPS ? `📡 ${lat.toFixed(5)}, ${lng.toFixed(5)}` : '📍 Sin GPS activo'
+    const lastSeen = d.last_location_at ? new Date(d.last_location_at).toLocaleTimeString() : '—'
+    return `<div style="font-family:monospace;min-width:160px;padding:4px">
+      <b style="font-size:14px">${d.users?.full_name||'Sin nombre'}</b><br>
+      <span style="color:#aaa;font-size:12px">${d.license_plate} · ⭐${d.users?.rating_avg||5}</span><br>
+      <span style="color:${color};font-size:12px">● ${d.status}${d.is_online?' · Online':' · Offline'}</span><br>
+      <span style="color:#888;font-size:11px">${gps}</span><br>
+      <span style="color:#666;font-size:10px">Último GPS: ${lastSeen}</span>
+    </div>`
+  }
+
   async function initMap() {
     if (!mapRef.current) return
     try {
@@ -62,63 +89,41 @@ export default function AdminApp() {
       mapInst.current = L.map(mapRef.current, { center: [18.3358, -64.8963], zoom: 12 })
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OSM', maxZoom: 19 }).addTo(mapInst.current)
 
-      // Mostrar TODOS los conductores
-      const VI_POINTS = [
-        [18.3428, -64.9308], [18.3198, -64.8763], [18.3558, -64.9063],
-        [18.3108, -64.8463], [18.3658, -64.8763], [18.3258, -64.9263],
-        [18.3408, -64.8563],
+      const VI_FALLBACK = [
+        [18.3428,-64.9308],[18.3198,-64.8763],[18.3558,-64.9063],
+        [18.3108,-64.8463],[18.3658,-64.8763],[18.3258,-64.9263],[18.3408,-64.8563],
       ]
 
+      // Crear markers para todos los conductores
+      markersMap.current = {}
       drivers.forEach((d, i) => {
-        // Usar GPS real si existe, sino posición aproximada en VI
-        const lat = d.current_lat || VI_POINTS[i % VI_POINTS.length][0]
-        const lng = d.current_lng || VI_POINTS[i % VI_POINTS.length][1]
+        const hasGPS = !!d.current_lat
+        const lat    = d.current_lat || VI_FALLBACK[i % VI_FALLBACK.length][0]
+        const lng    = d.current_lng || VI_FALLBACK[i % VI_FALLBACK.length][1]
+        const color  = d.status === 'available' && d.is_online ? '#4ade80' : d.status === 'busy' ? '#fb923c' : '#71717a'
 
-        const color   = d.status === 'available' && d.is_online ? '#4ade80'
-                      : d.status === 'busy'                      ? '#fb923c'
-                      : '#71717a'
-        const hasGPS  = !!d.current_lat
-        const gpsNote = hasGPS ? `📡 GPS: ${lat.toFixed(4)}, ${lng.toFixed(4)}` : '📍 Sin GPS activo'
-        const lastSeen = d.last_location_at
-          ? `Última vez: ${new Date(d.last_location_at).toLocaleTimeString()}`
-          : 'Nunca conectado'
-
-        const marker = L.marker([lat, lng], {
-          icon: L.divIcon({
-            className: '',
-            html: `<div style="
-              background:${color}22;
-              border:2px solid ${color};
-              border-radius:50%;
-              width:36px;height:36px;
-              display:flex;align-items:center;justify-content:center;
-              font-size:18px;
-              box-shadow:0 0 10px ${color}66;
-              ${!hasGPS ? 'opacity:0.6;' : ''}
-              position:relative;
-            ">
-              🚖
-              ${d.is_online ? `<div style="position:absolute;top:-2px;right:-2px;width:10px;height:10px;border-radius:50%;background:#4ade80;border:2px solid #020818;"></div>` : ''}
-            </div>`,
-            iconSize: [36,36], iconAnchor: [18,18]
-          })
-        }).addTo(mapInst.current)
-
-        marker.bindPopup(`
-          <div style="font-family:monospace;min-width:160px;padding:4px">
-            <b style="font-size:14px">${d.users?.full_name || 'Sin nombre'}</b><br>
-            <span style="color:#aaa;font-size:12px">${d.license_plate}</span><br>
-            <span style="color:${color};font-size:12px">● ${d.status}${d.is_online ? ' · Online' : ' · Offline'}</span><br>
-            <span style="color:#888;font-size:11px">${gpsNote}</span><br>
-            <span style="color:#666;font-size:10px">${lastSeen}</span>
-          </div>
-        `, { maxWidth: 200 })
+        const marker = L.marker([lat, lng], { icon: makeIcon(L, d, hasGPS) }).addTo(mapInst.current)
+        marker.bindPopup(makePopup(d, lat, lng, hasGPS, color), { maxWidth: 200 })
+        markersMap.current[d.id] = { marker, L, d }
       })
 
-      // Suscripción realtime para actualizar posiciones
-      supabase.channel('admin-gps')
+      // Realtime GPS — solo mueve el marker, no recarga el mapa
+      supabase.channel('admin-gps-rt')
         .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'drivers' },
-          () => { mapInst.current?.remove(); mapInst.current = null; setMapReady(false); setTimeout(initMap, 100) })
+          payload => {
+            const updated = payload.new
+            const entry   = markersMap.current[updated.id]
+            if (!entry || !updated.current_lat || !updated.current_lng) return
+
+            // Mover marker suavemente
+            entry.marker.setLatLng([updated.current_lat, updated.current_lng])
+
+            // Actualizar ícono y popup con nuevos datos
+            const mergedDriver = { ...entry.d, ...updated }
+            const color = updated.status === 'available' && updated.is_online ? '#4ade80' : updated.status === 'busy' ? '#fb923c' : '#71717a'
+            entry.marker.setIcon(makeIcon(entry.L, mergedDriver, true))
+            entry.marker.setPopupContent(makePopup(mergedDriver, updated.current_lat, updated.current_lng, true, color))
+          })
         .subscribe()
 
       setMapReady(true)
