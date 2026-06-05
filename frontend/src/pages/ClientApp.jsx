@@ -7,6 +7,7 @@ import RatingModal from '../components/RatingModal'
 import { useLang } from '../lib/LangContext'
 import LangSwitcher from '../components/LangSwitcher'
 import { registerPush } from '../lib/pushNotifications'
+import ShareButton from '../components/ShareButton'
 
 const VI_CENTER = [18.3358, -64.8963]
 
@@ -535,6 +536,8 @@ export default function ClientApp() {
           onClose={() => { setShowRating(false); setCompleted(null) }}
         />
       )}
+
+      <ShareButton />
 
       {/* Chat directo con conductor disponible */}
       {chatDriver && user && (

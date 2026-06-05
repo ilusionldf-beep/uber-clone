@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase'
 import { useNavigate } from 'react-router-dom'
 import { useLang } from '../lib/LangContext'
 import LangSwitcher from '../components/LangSwitcher'
+import ShareButton from '../components/ShareButton'
 
 export default function AdminApp() {
   const [stats, setStats]     = useState({ users: 0, drivers: 0, trips: 0, online: 0 })
@@ -275,6 +276,7 @@ export default function AdminApp() {
         )}
 
       </div>
+      <ShareButton />
     </div>
   )
 }

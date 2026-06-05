@@ -7,6 +7,7 @@ import { useLang } from '../lib/LangContext'
 import LangSwitcher from '../components/LangSwitcher'
 import { calcFare, calcDistance } from '../lib/fare'
 import { registerPush } from '../lib/pushNotifications'
+import ShareButton from '../components/ShareButton'
 
 const VI_CENTER = [18.3388, -64.9103]
 
@@ -553,6 +554,8 @@ export default function DriverApp() {
           {toast}
         </div>
       )}
+
+      <ShareButton />
 
       {/* Chat del viaje activo */}
       {showChat && activeTrip && user && (
