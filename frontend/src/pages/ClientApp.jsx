@@ -29,12 +29,14 @@ export default function ClientApp() {
   const [pushEnabled, setPushEnabled] = useState(false)
   const [completedTrip, setCompleted] = useState(null)
   const [driverUserId, setDriverUser] = useState(null)
-  const mapRef     = useRef(null)
-  const mapInst    = useRef(null)
-  const markersRef = useRef([])
-  const tileRef    = useRef(null)
-  const routeRef   = useRef(null)
-  const driverMkr  = useRef(null)
+  const mapRef      = useRef(null)
+  const mapInst     = useRef(null)
+  const markersRef  = useRef([])
+  const tileRef     = useRef(null)
+  const routeRef    = useRef(null)   // Línea destino
+  const driverMkr   = useRef(null)   // Marker del conductor
+  const trailRef    = useRef(null)   // Rastro de ruta del conductor
+  const trailPoints = useRef([])     // Historial de posiciones
   const navigate = useNavigate()
   const { t } = useLang()
 
@@ -75,6 +77,10 @@ export default function ClientApp() {
               } else if (t.status === 'completed') {
                 setCompleted(t)
                 setActiveTrip(null)
+                // Limpiar rastro del mapa
+                if (trailRef.current && mapInst.current) { mapInst.current.removeLayer(trailRef.current); trailRef.current = null }
+                if (driverMkr.current && mapInst.current) { mapInst.current.removeLayer(driverMkr.current); driverMkr.current = null }
+                trailPoints.current = []
                 showToast('✅ Viaje completado — ¡gracias!')
                 if (t.driver_id) {
                   supabase.from('drivers').select('user_id').eq('id', t.driver_id).single()
@@ -87,6 +93,9 @@ export default function ClientApp() {
                 }
               } else if (t.status === 'cancelled') {
                 setActiveTrip(null)
+                // Limpiar rastro
+                if (trailRef.current && mapInst.current) { mapInst.current.removeLayer(trailRef.current); trailRef.current = null }
+                trailPoints.current = []
                 showToast('❌ Viaje cancelado por el conductor')
               }
             })
@@ -100,12 +109,45 @@ export default function ClientApp() {
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'drivers' },
         async (payload) => {
           loadDrivers()
-          // Actualizar posición del conductor en el mapa si hay viaje activo
           const d = payload.new
-          if (d.current_lat && d.current_lng && driverMkr.current) {
-            const { default: L } = await import('leaflet').catch(() => ({ default: null }))
-            if (L) driverMkr.current.setLatLng([d.current_lat, d.current_lng])
+          if (!d.current_lat || !d.current_lng || !mapInst.current) return
+
+          const { default: L } = await import('leaflet').catch(() => ({ default: null }))
+          if (!L) return
+
+          const newPos = [d.current_lat, d.current_lng]
+
+          // 1. Mover marker del conductor
+          if (driverMkr.current) {
+            driverMkr.current.setLatLng(newPos)
+          } else {
+            driverMkr.current = L.marker(newPos, {
+              icon: L.divIcon({
+                className: '',
+                html: '<div style="font-size:26px;filter:drop-shadow(0 2px 6px rgba(0,0,0,0.6))">🚖</div>',
+                iconSize: [32,32], iconAnchor: [16,16]
+              })
+            }).addTo(mapInst.current).bindPopup('🚖 Tu conductor')
           }
+
+          // 2. Agregar punto al rastro
+          trailPoints.current.push(newPos)
+
+          // 3. Dibujar / actualizar el rastro de ruta
+          if (trailRef.current) {
+            trailRef.current.setLatLngs(trailPoints.current)
+          } else {
+            trailRef.current = L.polyline(trailPoints.current, {
+              color: '#facc15',
+              weight: 4,
+              opacity: 0.85,
+              lineJoin: 'round',
+              lineCap: 'round'
+            }).addTo(mapInst.current)
+          }
+
+          // 4. Centrar mapa suavemente en el conductor
+          mapInst.current.panTo(newPos, { animate: true, duration: 0.8 })
         })
       .subscribe()
 
