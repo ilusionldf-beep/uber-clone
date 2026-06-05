@@ -1,0 +1,18 @@
+{
+  "name": "Taxi Virgin Islands",
+  "short_name": "Taxi VI",
+  "description": "Plataforma de transporte en las Islas Vírgenes",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#020818",
+  "theme_color": "#facc15",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
