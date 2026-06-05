@@ -1,7 +1,9 @@
 import { supabase } from '../lib/supabase'
 import LangSwitcher from '../components/LangSwitcher'
+import { useLang } from '../lib/LangContext'
 
 export default function Login() {
+  const { t } = useLang()
   async function handleGoogle() {
     await supabase.auth.signInWithOAuth({
       provider: 'google',
@@ -24,7 +26,7 @@ export default function Login() {
           <div className="text-4xl font-black text-white tracking-tight">
             <span className="text-yellow-400">TAXI</span> VIRGIN ISLANDS
           </div>
-          <p className="text-gray-500 text-sm mt-2">Plataforma de transporte</p>
+          <p className="text-gray-500 text-sm mt-2">{t('appTagline')}</p>
         </div>
 
         {/* Botón Google */}
