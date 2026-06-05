@@ -59,24 +59,70 @@ export default function AdminApp() {
       const { default: L } = await import('leaflet')
       await import('leaflet/dist/leaflet.css')
       if (mapRef.current._leaflet_id) { mapInst.current?.remove(); mapInst.current = null }
-      if (mapInst.current) return
       mapInst.current = L.map(mapRef.current, { center: [18.3358, -64.8963], zoom: 12 })
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OSM' }).addTo(mapInst.current)
-      // Marcadores de conductores
-      drivers.forEach(d => {
-        if (!d.current_lat || !d.current_lng) return
-        const color = d.status === 'available' ? '#4ade80' : d.status === 'busy' ? '#fb923c' : '#71717a'
-        L.marker([d.current_lat, d.current_lng], {
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OSM', maxZoom: 19 }).addTo(mapInst.current)
+
+      // Mostrar TODOS los conductores
+      const VI_POINTS = [
+        [18.3428, -64.9308], [18.3198, -64.8763], [18.3558, -64.9063],
+        [18.3108, -64.8463], [18.3658, -64.8763], [18.3258, -64.9263],
+        [18.3408, -64.8563],
+      ]
+
+      drivers.forEach((d, i) => {
+        // Usar GPS real si existe, sino posición aproximada en VI
+        const lat = d.current_lat || VI_POINTS[i % VI_POINTS.length][0]
+        const lng = d.current_lng || VI_POINTS[i % VI_POINTS.length][1]
+
+        const color   = d.status === 'available' && d.is_online ? '#4ade80'
+                      : d.status === 'busy'                      ? '#fb923c'
+                      : '#71717a'
+        const hasGPS  = !!d.current_lat
+        const gpsNote = hasGPS ? `📡 GPS: ${lat.toFixed(4)}, ${lng.toFixed(4)}` : '📍 Sin GPS activo'
+        const lastSeen = d.last_location_at
+          ? `Última vez: ${new Date(d.last_location_at).toLocaleTimeString()}`
+          : 'Nunca conectado'
+
+        const marker = L.marker([lat, lng], {
           icon: L.divIcon({
             className: '',
-            html: `<div style="background:${color}22;border:2px solid ${color};border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;font-size:16px;box-shadow:0 0 8px ${color}88">🚖</div>`,
-            iconSize: [32,32], iconAnchor: [16,16]
+            html: `<div style="
+              background:${color}22;
+              border:2px solid ${color};
+              border-radius:50%;
+              width:36px;height:36px;
+              display:flex;align-items:center;justify-content:center;
+              font-size:18px;
+              box-shadow:0 0 10px ${color}66;
+              ${!hasGPS ? 'opacity:0.6;' : ''}
+              position:relative;
+            ">
+              🚖
+              ${d.is_online ? `<div style="position:absolute;top:-2px;right:-2px;width:10px;height:10px;border-radius:50%;background:#4ade80;border:2px solid #020818;"></div>` : ''}
+            </div>`,
+            iconSize: [36,36], iconAnchor: [18,18]
           })
         }).addTo(mapInst.current)
-          .bindPopup(`<b>${d.users?.full_name}</b><br>${d.license_plate}<br><span style="color:${color}">${d.status}</span>`)
+
+        marker.bindPopup(`
+          <div style="font-family:monospace;min-width:160px;padding:4px">
+            <b style="font-size:14px">${d.users?.full_name || 'Sin nombre'}</b><br>
+            <span style="color:#aaa;font-size:12px">${d.license_plate}</span><br>
+            <span style="color:${color};font-size:12px">● ${d.status}${d.is_online ? ' · Online' : ' · Offline'}</span><br>
+            <span style="color:#888;font-size:11px">${gpsNote}</span><br>
+            <span style="color:#666;font-size:10px">${lastSeen}</span>
+          </div>
+        `, { maxWidth: 200 })
       })
+
+      // Suscripción realtime para actualizar posiciones
+      supabase.channel('admin-gps')
+        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'drivers' },
+          () => { mapInst.current?.remove(); mapInst.current = null; setMapReady(false); setTimeout(initMap, 100) })
+        .subscribe()
+
       setMapReady(true)
-    } catch(e) { console.error(e) }
+    } catch(e) { console.error('Map error:', e) }
   }
 
   async function deleteUser(userId, authId, name) {
