@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { useNavigate } from 'react-router-dom'
 import Chat from '../components/Chat'
+import DirectChat from '../components/DirectChat'
 import RatingModal from '../components/RatingModal'
 import { useLang } from '../lib/LangContext'
 import LangSwitcher from '../components/LangSwitcher'
@@ -10,8 +11,10 @@ const VI_CENTER = [18.3358, -64.8963]
 
 export default function ClientApp() {
   const [user, setUser]       = useState(null)
-  const [drivers, setDrivers] = useState([])
-  const [history, setHistory] = useState([])
+  const [drivers, setDrivers]         = useState([])
+  const [allDrivers, setAllDrivers]   = useState([])
+  const [history, setHistory]         = useState([])
+  const [chatDriver, setChatDriver]   = useState(null)
   const [tab, setTab]         = useState('map')
   const [toast, setToast]     = useState('')
   const [requesting, setRequesting] = useState(false)
@@ -128,9 +131,15 @@ export default function ClientApp() {
 
   async function loadDrivers() {
     try {
-      const { data } = await supabase.from('available_drivers').select('*')
-      setDrivers(data || [])
-    } catch { setDrivers([]) }
+      // Conductores disponibles
+      const { data: avail } = await supabase.from('available_drivers').select('*')
+      setDrivers(avail || [])
+      // Todos los conductores (disponibles + ocupados + offline)
+      const { data: all } = await supabase.from('drivers')
+        .select('*, users(full_name, rating_avg, total_trips, avatar_url)')
+        .order('is_online', { ascending: false })
+      setAllDrivers(all || [])
+    } catch { setDrivers([]); setAllDrivers([]) }
   }
 
   async function loadHistory() {
@@ -346,6 +355,73 @@ export default function ClientApp() {
               className="w-full bg-yellow-400 hover:bg-yellow-300 active:scale-95 text-black font-bold py-4 rounded-xl text-base transition disabled:opacity-50">
               {activeTrip ? t('driverOnWayBtn') : requesting ? t('requestingBtn') : t('requestBtn')}
             </button>
+
+            {/* Lista de conductores en el mapa */}
+            {allDrivers.length > 0 && (
+              <div className="space-y-2">
+                <div className="text-xs text-gray-500 uppercase tracking-wider font-medium pt-1">
+                  🚕 Conductores ({allDrivers.length})
+                </div>
+                {allDrivers.map(d => {
+                  const isAvail = d.status === 'available' && d.is_online
+                  const isBusy  = d.status === 'busy'
+                  return (
+                    <div key={d.id}
+                      className={`flex items-center gap-3 p-3 rounded-xl border transition ${
+                        isAvail ? 'bg-zinc-900 border-green-400/20 hover:border-green-400/40' :
+                        isBusy  ? 'bg-zinc-900 border-zinc-700 opacity-70' :
+                                  'bg-zinc-900/50 border-zinc-800 opacity-50'
+                      }`}>
+
+                      {/* Avatar */}
+                      <div className="relative flex-shrink-0">
+                        {d.users?.avatar_url ? (
+                          <img src={d.users.avatar_url} className="w-10 h-10 rounded-full border-2 border-zinc-700" />
+                        ) : (
+                          <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm border-2 ${
+                            isAvail ? 'bg-green-400/10 border-green-400/40 text-green-400' :
+                            isBusy  ? 'bg-orange-400/10 border-orange-400/40 text-orange-400' :
+                                      'bg-zinc-700/30 border-zinc-600 text-zinc-500'
+                          }`}>
+                            {d.users?.full_name?.slice(0,2).toUpperCase() || '??'}
+                          </div>
+                        )}
+                        {/* Dot de estado */}
+                        <div className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-zinc-950 ${
+                          isAvail ? 'bg-green-400' : isBusy ? 'bg-orange-400' : 'bg-zinc-600'
+                        }`} />
+                      </div>
+
+                      {/* Info */}
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-semibold text-white truncate">
+                          {d.users?.full_name || 'Conductor'}
+                        </div>
+                        <div className="flex items-center gap-2 mt-0.5">
+                          <span className="text-xs text-yellow-400">⭐ {d.users?.rating_avg || 5.0}</span>
+                          <span className="text-xs text-gray-500">·</span>
+                          <span className={`text-xs font-medium ${
+                            isAvail ? 'text-green-400' : isBusy ? 'text-orange-400' : 'text-zinc-500'
+                          }`}>
+                            {isAvail ? '🟢 Disponible' : isBusy ? '🟠 Ocupado' : '⚫ Sin conexión'}
+                          </span>
+                        </div>
+                        <div className="text-xs text-gray-600 mt-0.5 font-mono">{d.license_plate}</div>
+                      </div>
+
+                      {/* Botón chat solo si disponible */}
+                      {isAvail && user && (
+                        <button
+                          onClick={() => setChatDriver({ ...d, user_id: d.users?.id || d.user_id })}
+                          className="flex-shrink-0 bg-yellow-400 hover:bg-yellow-300 active:scale-95 text-black text-xs font-bold px-3 py-2 rounded-lg transition">
+                          💬 Chat
+                        </button>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+            )}
           </div>
         )}
 
@@ -420,7 +496,19 @@ export default function ClientApp() {
         />
       )}
 
-      {/* Chat */}
+      {/* Chat directo con conductor disponible */}
+      {chatDriver && user && (
+        <DirectChat
+          senderId={user.id}
+          senderName={user.full_name}
+          receiverId={chatDriver.user_id}
+          receiverName={chatDriver.users?.full_name || 'Conductor'}
+          receiverAvatar={chatDriver.users?.avatar_url}
+          onClose={() => setChatDriver(null)}
+        />
+      )}
+
+      {/* Chat del viaje activo */}
       {showChat && activeTrip && user && (
         <Chat
           tripId={activeTrip.id}
