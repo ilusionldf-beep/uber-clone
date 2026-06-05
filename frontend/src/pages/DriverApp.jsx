@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { supabase } from '../lib/supabase'
 import { useNavigate } from 'react-router-dom'
 import Chat from '../components/Chat'
+import DirectChat from '../components/DirectChat'
 import { useLang } from '../lib/LangContext'
 import LangSwitcher from '../components/LangSwitcher'
 import { calcFare, calcDistance } from '../lib/fare'
@@ -20,6 +21,8 @@ export default function DriverApp() {
   const [completing, setCompleting] = useState(false)
   const [tripFare, setTripFare]     = useState(null)
   const [isSat, setIsSat]           = useState(false)
+  const [allDrivers, setAllDrivers] = useState([])
+  const [chatDriver, setChatDriver] = useState(null)
   const mapRef    = useRef(null)
   const mapInst   = useRef(null)
   const myMarker  = useRef(null)
@@ -53,12 +56,22 @@ export default function DriverApp() {
         })
       .subscribe()
 
+    loadAllDrivers()
     setTimeout(initMap, 200)
     return () => {
       supabase.removeChannel(ch)
       if (gpsTimer.current) clearInterval(gpsTimer.current)
     }
   }, [])
+
+  async function loadAllDrivers() {
+    try {
+      const { data } = await supabase.from('drivers')
+        .select('*, users(id, full_name, rating_avg, avatar_url)')
+        .order('is_online', { ascending: false })
+      setAllDrivers(data || [])
+    } catch { setAllDrivers([]) }
+  }
 
   async function loadDriver(userId) {
     try {
@@ -416,8 +429,75 @@ export default function DriverApp() {
         ) : (
           <div className="bg-zinc-900 rounded-xl p-4 border border-yellow-400/20 text-center">
             <div className="text-2xl mb-2">⚠️</div>
-            <div className="text-sm text-yellow-400 font-medium">Perfil de conductor incompleto</div>
-            <div className="text-xs text-gray-500 mt-1">Necesitas agregar tu vehículo en Supabase</div>
+            <div className="text-sm text-yellow-400 font-medium">{t('incompleteProfile')}</div>
+            <div className="text-xs text-gray-500 mt-1">{t('incompleteProfileSub')}</div>
+          </div>
+        )}
+
+        {/* Lista de otros conductores */}
+        {allDrivers.filter(d => d.user_id !== driver?.user_id).length > 0 && (
+          <div className="space-y-2">
+            <div className="text-xs text-gray-500 uppercase tracking-wider font-medium">
+              🚕 Otros conductores ({allDrivers.filter(d => d.user_id !== driver?.user_id).length})
+            </div>
+            {allDrivers
+              .filter(d => d.user_id !== driver?.user_id)
+              .map(d => {
+                const isAvail = d.status === 'available' && d.is_online
+                const isBusy  = d.status === 'busy'
+                return (
+                  <div key={d.id}
+                    className={`flex items-center gap-3 p-3 rounded-xl border transition ${
+                      isAvail ? 'bg-zinc-900 border-green-400/20' :
+                      isBusy  ? 'bg-zinc-900 border-orange-400/20 opacity-75' :
+                                'bg-zinc-900/50 border-zinc-800 opacity-50'
+                    }`}>
+
+                    {/* Avatar */}
+                    <div className="relative flex-shrink-0">
+                      {d.users?.avatar_url ? (
+                        <img src={d.users.avatar_url} className="w-10 h-10 rounded-full border-2 border-zinc-700" />
+                      ) : (
+                        <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm border-2 ${
+                          isAvail ? 'bg-green-400/10 border-green-400/40 text-green-400' :
+                          isBusy  ? 'bg-orange-400/10 border-orange-400/40 text-orange-400' :
+                                    'bg-zinc-700/30 border-zinc-600 text-zinc-500'
+                        }`}>
+                          {d.users?.full_name?.slice(0,2).toUpperCase() || '??'}
+                        </div>
+                      )}
+                      <div className={`absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-zinc-950 ${
+                        isAvail ? 'bg-green-400' : isBusy ? 'bg-orange-400' : 'bg-zinc-600'
+                      }`} />
+                    </div>
+
+                    {/* Info */}
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-semibold text-white truncate">
+                        {d.users?.full_name || 'Conductor'}
+                      </div>
+                      <div className="flex items-center gap-2 mt-0.5">
+                        <span className="text-xs text-yellow-400">⭐ {d.users?.rating_avg || 5.0}</span>
+                        <span className="text-xs text-gray-500">·</span>
+                        <span className={`text-xs font-medium ${
+                          isAvail ? 'text-green-400' : isBusy ? 'text-orange-400' : 'text-zinc-500'
+                        }`}>
+                          {isAvail ? '🟢 Disponible' : isBusy ? '🟠 Ocupado' : '⚫ Sin conexión'}
+                        </span>
+                      </div>
+                      <div className="text-xs text-gray-600 mt-0.5 font-mono">{d.license_plate}</div>
+                    </div>
+
+                    {/* Chat solo con disponibles */}
+                    {isAvail && user && d.users?.id !== user?.id && (
+                      <button onClick={() => setChatDriver(d)}
+                        className="flex-shrink-0 bg-yellow-400 hover:bg-yellow-300 active:scale-95 text-black text-xs font-bold px-3 py-2 rounded-lg transition">
+                        💬 Chat
+                      </button>
+                    )}
+                  </div>
+                )
+              })}
           </div>
         )}
       </div>
@@ -429,7 +509,7 @@ export default function DriverApp() {
         </div>
       )}
 
-      {/* Chat */}
+      {/* Chat del viaje activo */}
       {showChat && activeTrip && user && (
         <Chat
           tripId={activeTrip.id}
@@ -437,6 +517,18 @@ export default function DriverApp() {
           senderName={user.full_name}
           otherName="Pasajero"
           onClose={() => setShowChat(false)}
+        />
+      )}
+
+      {/* Chat directo con otro conductor */}
+      {chatDriver && user && (
+        <DirectChat
+          senderId={user.id}
+          senderName={user.full_name}
+          receiverId={chatDriver.users?.id}
+          receiverName={chatDriver.users?.full_name || 'Conductor'}
+          receiverAvatar={chatDriver.users?.avatar_url}
+          onClose={() => setChatDriver(null)}
         />
       )}
     </div>
