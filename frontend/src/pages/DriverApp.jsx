@@ -195,6 +195,15 @@ export default function DriverApp() {
     setPending(null)
   }
 
+  function locateMe() {
+    if (!navigator.geolocation || !mapInst.current) return
+    navigator.geolocation.getCurrentPosition(pos => {
+      const { latitude: lat, longitude: lng } = pos.coords
+      mapInst.current.flyTo([lat, lng], 16, { animate: true, duration: 1.2 })
+      if (myMarker.current) myMarker.current.setLatLng([lat, lng])
+    }, () => showToast('⚠️ No se pudo obtener tu ubicación'))
+  }
+
   async function toggleSat() {
     if (!mapInst.current || !tileRef.current) return
     const { default: L } = await import('leaflet')
@@ -399,20 +408,26 @@ export default function DriverApp() {
             {isOnline ? t('gpsActive') : t('myZone')}
           </div>
           <div className="relative">
-            <div ref={mapRef} style={{ height: 260, borderRadius: 12, overflow: 'hidden', background: '#18181b' }}>
+            <div ref={mapRef} style={{ height: 200, borderRadius: 12, overflow: 'hidden', background: '#18181b' }}>
               {!mapReady && (
                 <div className="h-full flex items-center justify-center text-gray-600 text-sm">{t('loadingMap')}</div>
               )}
             </div>
             {mapReady && (
-              <button onClick={toggleSat}
-                className={`absolute top-2 right-2 z-[1000] px-2 py-1 rounded-lg text-xs font-bold border transition ${
-                  isSat
-                    ? 'bg-yellow-400 text-black border-yellow-400'
-                    : 'bg-zinc-900/90 text-white border-zinc-600 hover:border-yellow-400'
-                }`}>
-                {isSat ? '🗺 Mapa' : '🛰 Satélite'}
-              </button>
+              <>
+                <button onClick={toggleSat}
+                  className={`absolute top-2 right-2 z-[1000] px-2 py-1 rounded-lg text-xs font-bold border transition ${
+                    isSat
+                      ? 'bg-yellow-400 text-black border-yellow-400'
+                      : 'bg-zinc-900/90 text-white border-zinc-600 hover:border-yellow-400'
+                  }`}>
+                  {isSat ? '🗺 Mapa' : '🛰 Satélite'}
+                </button>
+                <button onClick={locateMe}
+                  className="absolute top-2 left-2 z-[1000] px-2 py-1 rounded-lg text-xs font-bold border bg-zinc-900/90 text-yellow-400 border-yellow-400/50 hover:border-yellow-400 transition">
+                  📍 Yo
+                </button>
+              </>
             )}
           </div>
         </div>

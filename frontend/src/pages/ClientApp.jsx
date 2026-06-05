@@ -191,6 +191,15 @@ export default function ClientApp() {
     }
   }
 
+  function locateMe() {
+    if (!navigator.geolocation || !mapInst.current) return
+    navigator.geolocation.getCurrentPosition(pos => {
+      const { latitude: lat, longitude: lng } = pos.coords
+      mapInst.current.flyTo([lat, lng], 16, { animate: true, duration: 1.2 })
+      if (myClientMarker) myClientMarker.setLatLng([lat, lng])
+    }, () => showToast('⚠️ No se pudo obtener tu ubicación'))
+  }
+
   async function toggleSat() {
     if (!mapInst.current || !tileRef.current) return
     const { default: L } = await import('leaflet')
@@ -364,14 +373,20 @@ export default function ClientApp() {
                 )}
               </div>
               {mapReady && (
-                <button onClick={toggleSat}
-                  className={`absolute top-2 right-2 z-[1000] px-2 py-1 rounded-lg text-xs font-bold border transition ${
-                    isSat
-                      ? 'bg-yellow-400 text-black border-yellow-400'
-                      : 'bg-zinc-900/90 text-white border-zinc-600 hover:border-yellow-400'
-                  }`}>
-                  {isSat ? '🗺 Mapa' : '🛰 Satélite'}
-                </button>
+                <>
+                  <button onClick={toggleSat}
+                    className={`absolute top-2 right-2 z-[1000] px-2 py-1 rounded-lg text-xs font-bold border transition ${
+                      isSat
+                        ? 'bg-yellow-400 text-black border-yellow-400'
+                        : 'bg-zinc-900/90 text-white border-zinc-600 hover:border-yellow-400'
+                    }`}>
+                    {isSat ? '🗺 Mapa' : '🛰 Satélite'}
+                  </button>
+                  <button onClick={locateMe}
+                    className="absolute top-2 left-2 z-[1000] px-2 py-1 rounded-lg text-xs font-bold border bg-zinc-900/90 text-yellow-400 border-yellow-400/50 hover:border-yellow-400 transition">
+                    📍 Yo
+                  </button>
+                </>
               )}
             </div>
 
