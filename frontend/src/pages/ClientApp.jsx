@@ -3,7 +3,6 @@ import { supabase } from '../lib/supabase'
 import { useNavigate } from 'react-router-dom'
 import Chat from '../components/Chat'
 import RatingModal from '../components/RatingModal'
-import RideRequest from '../components/RideRequest'
 import { useLang } from '../lib/LangContext'
 import LangSwitcher from '../components/LangSwitcher'
 
@@ -163,22 +162,20 @@ export default function ClientApp() {
     }
   }
 
-  async function requestRide({ origin, dest, fare }) {
+  async function requestRide() {
     if (!user) return
     setRequesting(true)
     try {
       const { error } = await supabase.rpc('request_trip', {
         p_client_id:   user.id,
-        p_origin_addr: origin.name,
-        p_origin_lat:  origin.lat,
-        p_origin_lng:  origin.lng,
-        p_dest_addr:   dest.name,
-        p_dest_lat:    dest.lat,
-        p_dest_lng:    dest.lng,
-        p_notes:       `fare:${fare.total}`
+        p_origin_addr: 'Charlotte Amalie',
+        p_origin_lat:  18.3358, p_origin_lng: -64.8963,
+        p_dest_addr:   'Aeropuerto Cyril E. King',
+        p_dest_lat:    18.3373, p_dest_lng:  -64.9733,
+        p_notes:       null
       })
       if (error) throw error
-      showToast(`✅ Viaje solicitado · ${fare.totalStr}`)
+      showToast('✅ Viaje solicitado — esperando conductor...')
     } catch (e) {
       showToast('❌ ' + e.message)
     } finally {
@@ -267,18 +264,11 @@ export default function ClientApp() {
               )}
             </div>
 
-            {/* Solicitar viaje con tarifa */}
-            {activeTrip ? (
-              <button disabled
-                className="w-full bg-yellow-400/40 text-black font-bold py-4 rounded-xl text-base opacity-60 cursor-not-allowed">
-                {t('driverOnWayBtn')}
-              </button>
-            ) : (
-              <RideRequest
-                onRequest={requestRide}
-                requesting={requesting}
-              />
-            )}
+            {/* Botón solicitar viaje */}
+            <button onClick={requestRide} disabled={requesting || !!activeTrip}
+              className="w-full bg-yellow-400 hover:bg-yellow-300 active:scale-95 text-black font-bold py-4 rounded-xl text-base transition disabled:opacity-50">
+              {activeTrip ? t('driverOnWayBtn') : requesting ? t('requestingBtn') : t('requestBtn')}
+            </button>
           </div>
         )}
 
