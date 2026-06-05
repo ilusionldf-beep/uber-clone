@@ -3,7 +3,6 @@ import { supabase } from '../lib/supabase'
 import { useNavigate } from 'react-router-dom'
 import { useLang } from '../lib/LangContext'
 import LangSwitcher from '../components/LangSwitcher'
-import { API_URL } from '../lib/api'
 
 export default function Register() {
   const [form, setForm] = useState({ full_name: '', email: '', password: '', phone: '', role: 'cliente' })
@@ -20,22 +19,27 @@ export default function Register() {
     setError('')
 
     try {
-      // 1. Crear usuario via backend (usa admin API + email_confirm:true)
-      const res = await fetch(`${API_URL}/api/auth/register`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: form.email,
-          password: form.password,
-          full_name: form.full_name,
-          phone: form.phone || null,
-          role: form.role
-        })
+      // 1. Crear usuario directo en Supabase Auth
+      const { data, error: signUpErr } = await supabase.auth.signUp({
+        email: form.email,
+        password: form.password,
+        options: { data: { full_name: form.full_name, role: form.role } }
       })
-      const result = await res.json()
-      if (!res.ok) throw new Error(result.error)
+      if (signUpErr) throw signUpErr
+      if (!data.user) throw new Error('No se pudo crear el usuario')
 
-      // 2. Login inmediato (usuario ya confirmado por admin API)
+      // 2. Insertar perfil en tabla users
+      const { error: profileErr } = await supabase.from('users').insert({
+        auth_id:   data.user.id,
+        role:      form.role,
+        full_name: form.full_name,
+        phone:     form.phone || null,
+        email:     form.email
+      })
+      // Ignorar error de duplicado
+      if (profileErr && profileErr.code !== '23505') throw profileErr
+
+      // 3. Login inmediato
       const { error: loginErr } = await supabase.auth.signInWithPassword({
         email: form.email, password: form.password
       })
