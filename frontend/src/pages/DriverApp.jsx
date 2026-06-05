@@ -19,9 +19,12 @@ export default function DriverApp() {
   const [showChat, setShowChat]     = useState(false)
   const [completing, setCompleting] = useState(false)
   const [tripFare, setTripFare]     = useState(null)
+  const [isSat, setIsSat]           = useState(false)
   const mapRef    = useRef(null)
   const mapInst   = useRef(null)
   const myMarker  = useRef(null)
+  const tileRef   = useRef(null)
+  const routeRef  = useRef(null)
   const gpsTimer  = useRef(null)
   const navigate  = useNavigate()
   const { t } = useLang()
@@ -86,8 +89,8 @@ export default function DriverApp() {
       if (mapInst.current) return
 
       mapInst.current = L.map(mapRef.current, { center: VI_CENTER, zoom: 14 })
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© OpenStreetMap'
+      tileRef.current = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap', maxZoom: 19
       }).addTo(mapInst.current)
 
       myMarker.current = L.marker(VI_CENTER, {
@@ -163,6 +166,7 @@ export default function DriverApp() {
       showToast('❌ Viaje ya tomado por otro conductor')
     } else {
       setActiveTrip(pendingTrip)
+      drawTripRoute(pendingTrip)
       // Calcular tarifa del viaje aceptado
       const dist = calcDistance(
         pendingTrip.origin_lat, pendingTrip.origin_lng,
@@ -172,6 +176,50 @@ export default function DriverApp() {
       showToast('✅ Viaje aceptado — en camino al cliente')
     }
     setPending(null)
+  }
+
+  async function toggleSat() {
+    if (!mapInst.current || !tileRef.current) return
+    const { default: L } = await import('leaflet')
+    mapInst.current.removeLayer(tileRef.current)
+    if (!isSat) {
+      tileRef.current = L.tileLayer(
+        'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+        { attribution: '© ESRI', maxZoom: 19 }
+      ).addTo(mapInst.current)
+      setIsSat(true)
+    } else {
+      tileRef.current = L.tileLayer(
+        'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+        { attribution: '© OpenStreetMap', maxZoom: 19 }
+      ).addTo(mapInst.current)
+      setIsSat(false)
+    }
+  }
+
+  async function drawTripRoute(trip) {
+    if (!mapInst.current || !trip) return
+    const { default: L } = await import('leaflet')
+    if (routeRef.current) mapInst.current.removeLayer(routeRef.current)
+
+    const origin = [trip.origin_lat, trip.origin_lng]
+    const dest   = [trip.dest_lat,   trip.dest_lng]
+
+    // Línea de ruta punteada
+    routeRef.current = L.polyline([origin, dest], {
+      color: '#facc15', weight: 4, opacity: 0.9, dashArray: '8, 6'
+    }).addTo(mapInst.current)
+
+    // Marcadores de origen y destino
+    L.marker(origin, {
+      icon: L.divIcon({ className: '', html: '<div style="font-size:20px">📍</div>', iconSize:[24,24], iconAnchor:[12,20] })
+    }).addTo(mapInst.current).bindPopup('📍 ' + trip.origin_address)
+
+    L.marker(dest, {
+      icon: L.divIcon({ className: '', html: '<div style="font-size:20px">🏁</div>', iconSize:[24,24], iconAnchor:[12,20] })
+    }).addTo(mapInst.current).bindPopup('🏁 ' + trip.dest_address)
+
+    mapInst.current.fitBounds(L.latLngBounds([origin, dest]).pad(0.3))
   }
 
   async function completeTrip() {
@@ -311,9 +359,21 @@ export default function DriverApp() {
           <div className="text-xs text-gray-500 uppercase tracking-wider mb-2 font-medium">
             {isOnline ? t('gpsActive') : t('myZone')}
           </div>
-          <div ref={mapRef} style={{ height: 260, borderRadius: 12, overflow: 'hidden', background: '#18181b' }}>
-            {!mapReady && (
-              <div className="h-full flex items-center justify-center text-gray-600 text-sm">{t('loadingMap')}</div>
+          <div className="relative">
+            <div ref={mapRef} style={{ height: 260, borderRadius: 12, overflow: 'hidden', background: '#18181b' }}>
+              {!mapReady && (
+                <div className="h-full flex items-center justify-center text-gray-600 text-sm">{t('loadingMap')}</div>
+              )}
+            </div>
+            {mapReady && (
+              <button onClick={toggleSat}
+                className={`absolute top-2 right-2 z-[1000] px-2 py-1 rounded-lg text-xs font-bold border transition ${
+                  isSat
+                    ? 'bg-yellow-400 text-black border-yellow-400'
+                    : 'bg-zinc-900/90 text-white border-zinc-600 hover:border-yellow-400'
+                }`}>
+                {isSat ? '🗺 Mapa' : '🛰 Satélite'}
+              </button>
             )}
           </div>
         </div>

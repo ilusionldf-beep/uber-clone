@@ -16,14 +16,18 @@ export default function ClientApp() {
   const [toast, setToast]     = useState('')
   const [requesting, setRequesting] = useState(false)
   const [mapReady, setMapReady]     = useState(false)
+  const [isSat, setIsSat]           = useState(false)
   const [activeTrip, setActiveTrip]   = useState(null)
   const [showChat, setShowChat]       = useState(false)
   const [showRating, setShowRating]   = useState(false)
   const [completedTrip, setCompleted] = useState(null)
   const [driverUserId, setDriverUser] = useState(null)
-  const mapRef   = useRef(null)
-  const mapInst  = useRef(null)
+  const mapRef     = useRef(null)
+  const mapInst    = useRef(null)
   const markersRef = useRef([])
+  const tileRef    = useRef(null)
+  const routeRef   = useRef(null)
+  const driverMkr  = useRef(null)
   const navigate = useNavigate()
   const { t } = useLang()
 
@@ -46,10 +50,18 @@ export default function ClientApp() {
     })
     loadDrivers()
 
-    // Suscripción realtime: conductores disponibles
+    // Suscripción realtime: conductores disponibles + GPS en tiempo real
     const ch1 = supabase.channel('driver-updates')
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'drivers' },
-        () => loadDrivers())
+        async (payload) => {
+          loadDrivers()
+          // Actualizar posición del conductor en el mapa si hay viaje activo
+          const d = payload.new
+          if (d.current_lat && d.current_lng && driverMkr.current) {
+            const { default: L } = await import('leaflet').catch(() => ({ default: null }))
+            if (L) driverMkr.current.setLatLng([d.current_lat, d.current_lng])
+          }
+        })
       .subscribe()
 
     // Suscripción realtime: mi viaje aceptado
@@ -60,6 +72,8 @@ export default function ClientApp() {
           if (t.status === 'accepted') {
             setActiveTrip(t)
             showToast('🚖 ¡Conductor en camino!')
+            // Dibujar ruta en el mapa
+            drawRoute(t.origin_lat, t.origin_lng, t.dest_lat, t.dest_lng, null, null)
           } else if (t.status === 'completed') {
             setCompleted(t)
             setActiveTrip(null)
@@ -144,8 +158,8 @@ export default function ClientApp() {
       if (mapInst.current) return
 
       mapInst.current = L.map(mapRef.current, { center: VI_CENTER, zoom: 13 })
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© OpenStreetMap'
+      tileRef.current = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '© OpenStreetMap', maxZoom: 19
       }).addTo(mapInst.current)
 
       L.marker(VI_CENTER, {
@@ -160,6 +174,56 @@ export default function ClientApp() {
     } catch (e) {
       console.error('Map error:', e)
     }
+  }
+
+  async function toggleSat() {
+    if (!mapInst.current || !tileRef.current) return
+    const { default: L } = await import('leaflet')
+    mapInst.current.removeLayer(tileRef.current)
+    if (!isSat) {
+      tileRef.current = L.tileLayer(
+        'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+        { attribution: '© ESRI', maxZoom: 19 }
+      ).addTo(mapInst.current)
+      setIsSat(true)
+    } else {
+      tileRef.current = L.tileLayer(
+        'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+        { attribution: '© OpenStreetMap', maxZoom: 19 }
+      ).addTo(mapInst.current)
+      setIsSat(false)
+    }
+  }
+
+  async function drawRoute(originLat, originLng, destLat, destLng, driverLat, driverLng) {
+    if (!mapInst.current) return
+    const { default: L } = await import('leaflet')
+
+    // Borrar ruta anterior
+    if (routeRef.current) { mapInst.current.removeLayer(routeRef.current) }
+    if (driverMkr.current) { mapInst.current.removeLayer(driverMkr.current) }
+
+    const points = [[originLat, originLng], [destLat, destLng]]
+
+    // Línea de ruta
+    routeRef.current = L.polyline(points, {
+      color: '#facc15', weight: 4, opacity: 0.8,
+      dashArray: '8, 6'
+    }).addTo(mapInst.current)
+
+    // Marker del conductor si tiene posición
+    if (driverLat && driverLng) {
+      driverMkr.current = L.marker([driverLat, driverLng], {
+        icon: L.divIcon({
+          className: '',
+          html: '<div style="font-size:24px;filter:drop-shadow(0 2px 4px rgba(0,0,0,0.5))">🚖</div>',
+          iconSize: [30, 30], iconAnchor: [15, 15]
+        })
+      }).addTo(mapInst.current).bindPopup('🚖 Tu conductor')
+    }
+
+    // Zoom para mostrar toda la ruta
+    mapInst.current.fitBounds(L.latLngBounds(points).pad(0.3))
   }
 
   async function requestRide() {
@@ -259,9 +323,21 @@ export default function ClientApp() {
             </div>
 
             {/* Mapa */}
-            <div ref={mapRef} style={{ height: 260, borderRadius: 12, overflow: 'hidden', background: '#18181b' }}>
-              {!mapReady && (
-                <div className="h-full flex items-center justify-center text-gray-600 text-sm">{t('loadingMap')}</div>
+            <div className="relative">
+              <div ref={mapRef} style={{ height: 260, borderRadius: 12, overflow: 'hidden', background: '#18181b' }}>
+                {!mapReady && (
+                  <div className="h-full flex items-center justify-center text-gray-600 text-sm">{t('loadingMap')}</div>
+                )}
+              </div>
+              {mapReady && (
+                <button onClick={toggleSat}
+                  className={`absolute top-2 right-2 z-[1000] px-2 py-1 rounded-lg text-xs font-bold border transition ${
+                    isSat
+                      ? 'bg-yellow-400 text-black border-yellow-400'
+                      : 'bg-zinc-900/90 text-white border-zinc-600 hover:border-yellow-400'
+                  }`}>
+                  {isSat ? '🗺 Mapa' : '🛰 Satélite'}
+                </button>
               )}
             </div>
 
