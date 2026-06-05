@@ -23,6 +23,7 @@ export default function ClientApp() {
   const [activeTrip, setActiveTrip]   = useState(null)
   const [showChat, setShowChat]       = useState(false)
   const [showRating, setShowRating]   = useState(false)
+  const [cancelling, setCancelling]   = useState(false)
   const [completedTrip, setCompleted] = useState(null)
   const [driverUserId, setDriverUser] = useState(null)
   const mapRef     = useRef(null)
@@ -235,6 +236,19 @@ export default function ClientApp() {
     mapInst.current.fitBounds(L.latLngBounds(points).pad(0.3))
   }
 
+  async function cancelRide() {
+    if (!activeTrip) return
+    setCancelling(true)
+    const { error } = await supabase.from('trips')
+      .update({ status: 'cancelled', cancelled_at: new Date().toISOString(), cancel_reason: 'Cancelado por el cliente' })
+      .eq('id', activeTrip.id)
+    setCancelling(false)
+    if (error) { showToast('❌ ' + error.message); return }
+    setActiveTrip(null)
+    if (routeRef.current && mapInst.current) mapInst.current.removeLayer(routeRef.current)
+    showToast('🚫 Viaje cancelado')
+  }
+
   async function requestRide() {
     if (!user) return
     setRequesting(true)
@@ -307,10 +321,16 @@ export default function ClientApp() {
               <div>📍 <span className="text-gray-300">{activeTrip.origin_address}</span></div>
               <div>🏁 <span className="text-gray-300">{activeTrip.dest_address}</span></div>
             </div>
-            <button onClick={() => setShowChat(true)}
-              className="w-full bg-green-400 hover:bg-green-300 text-black font-bold py-2.5 rounded-lg text-sm transition flex items-center justify-center gap-2">
-              {t('chatDriver')}
-            </button>
+            <div className="grid grid-cols-2 gap-2">
+              <button onClick={() => setShowChat(true)}
+                className="bg-green-400 hover:bg-green-300 active:scale-95 text-black font-bold py-2.5 rounded-lg text-sm transition flex items-center justify-center gap-1">
+                💬 Chat
+              </button>
+              <button onClick={cancelRide} disabled={cancelling}
+                className="bg-red-500/10 hover:bg-red-500/20 active:scale-95 border border-red-400/50 text-red-400 font-bold py-2.5 rounded-lg text-sm transition disabled:opacity-50">
+                {cancelling ? '⏳' : '✕ Cancelar'}
+              </button>
+            </div>
           </div>
         )}
 

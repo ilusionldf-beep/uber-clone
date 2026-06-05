@@ -18,7 +18,8 @@ export default function DriverApp() {
   const [toast, setToast]         = useState('')
   const [activeTrip, setActiveTrip] = useState(null)
   const [showChat, setShowChat]     = useState(false)
-  const [completing, setCompleting] = useState(false)
+  const [completing, setCompleting]   = useState(false)
+  const [cancelling, setCancelling]   = useState(false)
   const [tripFare, setTripFare]     = useState(null)
   const [isSat, setIsSat]           = useState(false)
   const [allDrivers, setAllDrivers] = useState([])
@@ -235,6 +236,24 @@ export default function DriverApp() {
     mapInst.current.fitBounds(L.latLngBounds([origin, dest]).pad(0.3))
   }
 
+  async function cancelTrip() {
+    if (!activeTrip) return
+    setCancelling(true)
+    const { error } = await supabase.from('trips')
+      .update({ status: 'cancelled', cancelled_at: new Date().toISOString(), cancel_reason: 'Cancelado por el conductor' })
+      .eq('id', activeTrip.id)
+    if (!error) {
+      // Liberar al conductor
+      await supabase.from('drivers').update({ status: 'available' }).eq('id', driver.id)
+    }
+    setCancelling(false)
+    if (error) { showToast('❌ ' + error.message); return }
+    setActiveTrip(null)
+    setTripFare(null)
+    if (routeRef.current && mapInst.current) mapInst.current.removeLayer(routeRef.current)
+    showToast('🚫 Viaje cancelado')
+  }
+
   async function completeTrip() {
     if (!activeTrip || !driver) return
     setCompleting(true)
@@ -354,14 +373,18 @@ export default function DriverApp() {
                 </div>
               )}
             </div>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-3 gap-2">
               <button onClick={() => setShowChat(true)}
-                className="bg-blue-500 hover:bg-blue-400 text-white font-bold py-3 rounded-xl text-sm transition flex items-center justify-center gap-1">
-                {t('chatPassenger')}
+                className="bg-blue-500 hover:bg-blue-400 active:scale-95 text-white font-bold py-3 rounded-xl text-sm transition flex items-center justify-center gap-1">
+                💬 Chat
               </button>
               <button onClick={completeTrip} disabled={completing}
-                className="bg-green-500 hover:bg-green-400 disabled:opacity-50 text-white font-bold py-3 rounded-xl text-sm transition flex items-center justify-center gap-1">
-                {completing ? t('completing') : t('completeTrip')}
+                className="bg-green-500 hover:bg-green-400 disabled:opacity-50 active:scale-95 text-white font-bold py-3 rounded-xl text-sm transition flex items-center justify-center">
+                {completing ? '⏳' : '✅ Listo'}
+              </button>
+              <button onClick={cancelTrip} disabled={cancelling}
+                className="bg-red-500/10 hover:bg-red-500/20 active:scale-95 border border-red-400/50 text-red-400 font-bold py-3 rounded-xl text-sm transition disabled:opacity-50 flex items-center justify-center">
+                {cancelling ? '⏳' : '✕ Cancelar'}
               </button>
             </div>
           </div>
