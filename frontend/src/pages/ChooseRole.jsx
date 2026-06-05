@@ -75,16 +75,29 @@ export default function ChooseRole({ userId, userName, userEmail, userAvatar }) 
     setError('')
     setLoading(true)
 
-    const { error: err } = await supabase.from('users').upsert({
+    // 1. Crear perfil de usuario
+    const { data: newUser, error: err } = await supabase.from('users').upsert({
       auth_id:   userId,
       role,
       full_name: name.trim(),
       email:     userEmail,
       phone:     phone.trim() || null,
-    }, { onConflict: 'auth_id' })
+    }, { onConflict: 'auth_id' }).select().single()
+
+    if (err) { setError(err.message); setLoading(false); return }
+
+    // 2. Si es conductor → crear perfil de driver automáticamente
+    if (role === 'taxista' && newUser) {
+      await supabase.from('drivers').upsert({
+        user_id:       newUser.id,
+        license_plate: 'PENDIENTE',
+        vehicle_model: 'Sin especificar',
+        status:        'offline',
+        is_online:     false,
+      }, { onConflict: 'user_id' })
+    }
 
     setLoading(false)
-    if (err) { setError(err.message); return }
     navigate(role === 'taxista' ? '/driver' : '/client')
   }
 

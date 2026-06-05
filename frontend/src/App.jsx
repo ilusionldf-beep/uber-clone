@@ -7,6 +7,7 @@ import AdminApp from './pages/AdminApp'
 import RatingTest from './pages/RatingTest'
 import FareDemo from './pages/FareDemo'
 import AuthCallback from './pages/AuthCallback'
+import EditProfile from './pages/EditProfile'
 
 function App() {
   return (
@@ -18,6 +19,7 @@ function App() {
         <Route path="/driver"    element={<DriverApp />} />
         <Route path="/admin"     element={<AdminApp />} />
         <Route path="/auth/callback" element={<AuthCallback />} />
+        <Route path="/profile"      element={<EditProfile />} />
         <Route path="/rating-test"  element={<RatingTest />} />
         <Route path="/fare-demo"   element={<FareDemo />} />
         <Route path="*"          element={<Navigate to="/" />} />

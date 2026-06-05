@@ -203,8 +203,9 @@ export default function ClientApp() {
         </div>
         <div className="flex items-center gap-2">
           <LangSwitcher />
-          <button onClick={logout} className="text-xs text-gray-500 hover:text-red-400 transition px-3 py-1 border border-zinc-700 rounded-lg">
-            {t('logout')}
+          <button onClick={() => navigate('/profile')}
+            className="w-8 h-8 rounded-full bg-yellow-400/10 border border-yellow-400/30 flex items-center justify-center text-yellow-400 font-bold text-xs hover:bg-yellow-400/20 transition">
+            {user?.full_name?.slice(0,1).toUpperCase() || '?'}
           </button>
         </div>
       </div>
