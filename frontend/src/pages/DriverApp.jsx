@@ -6,6 +6,7 @@ import DirectChat from '../components/DirectChat'
 import { useLang } from '../lib/LangContext'
 import LangSwitcher from '../components/LangSwitcher'
 import { calcFare, calcDistance } from '../lib/fare'
+import { registerPush } from '../lib/pushNotifications'
 
 const VI_CENTER = [18.3388, -64.9103]
 
@@ -80,6 +81,8 @@ export default function DriverApp() {
       if (data) {
         setDriver(data)
         setIsOnline(data.is_online)
+        // Activar push notifications para el conductor
+        if (user) registerPush(user.id)
         // Cargar viaje activo si existe
         const { data: trip } = await supabase.from('trips')
           .select('*').eq('driver_id', data.id)

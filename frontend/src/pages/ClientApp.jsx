@@ -6,6 +6,7 @@ import DirectChat from '../components/DirectChat'
 import RatingModal from '../components/RatingModal'
 import { useLang } from '../lib/LangContext'
 import LangSwitcher from '../components/LangSwitcher'
+import { registerPush } from '../lib/pushNotifications'
 
 const VI_CENTER = [18.3358, -64.8963]
 
@@ -24,6 +25,7 @@ export default function ClientApp() {
   const [showChat, setShowChat]       = useState(false)
   const [showRating, setShowRating]   = useState(false)
   const [cancelling, setCancelling]   = useState(false)
+  const [pushEnabled, setPushEnabled] = useState(false)
   const [completedTrip, setCompleted] = useState(null)
   const [driverUserId, setDriverUser] = useState(null)
   const mapRef     = useRef(null)
@@ -43,6 +45,9 @@ export default function ClientApp() {
         .then(async ({ data }) => {
           if (!data) return
           setUser(data)
+          // Activar push notifications
+          const ok = await registerPush(data.id)
+          setPushEnabled(ok)
           // Cargar viaje activo si existe
           const { data: trip } = await supabase.from('trips')
             .select('*').eq('client_id', data.id)
